@@ -80,6 +80,23 @@ void sensors_free_chip_name(sensors_chip_name *chip)
    return (ie. != 0), res is undefined, but all allocations are undone.
 */
 
+static char * sensors_find_bus_separator(const char *name)
+{
+	/*
+	   Handle special cases with (at least) Rockchip SoCs which have
+	   virtual chips for SoC and GPU having dash in their names:
+	   - soc-thermal
+	   - gpu-thermal
+	*/
+	if (!strncmp(name, "soc-thermal-", 12) ||
+			 !strncmp(name, "gpu-thermal-", 12)) {
+		return (char *)(name + 11);
+	}
+
+	/* By default the first dash is the bus separator */
+	return strchr(name, '-');
+}
+
 int sensors_parse_chip_name(const char *name, sensors_chip_name *res)
 {
 	char *dash;
@@ -89,7 +106,7 @@ int sensors_parse_chip_name(const char *name, sensors_chip_name *res)
 		res->prefix = SENSORS_CHIP_NAME_PREFIX_ANY;
 		name += 2;
 	} else {
-		if (!(dash = strchr(name, '-')))
+		if (!(dash = sensors_find_bus_separator(name)))
 			return -SENSORS_ERR_CHIP_NAME;
 		res->prefix = strndup(name, dash - name);
 		if (!res->prefix)
